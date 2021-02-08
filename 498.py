@@ -1,3 +1,12 @@
+'''
+Script Purpose: Capstone Project (CYBV498)
+Script Version: 1.0 February 2021
+Script Author:  Gabriel Haab, University of Arizona
+
+Script Revision History:
+Version 1.0 February 2021, Python 3.8.2 - Added serial communication
+'''
+
 # Imports
 import serial # pip3 install serial
 import time
@@ -5,6 +14,10 @@ import re
 
 serial_port = "COM4"
 baud_rate = 115200
+
+'''
+This function will read the return data after sending the command.
+'''
 
 def read_data(command_send):
     count = False
@@ -41,6 +54,9 @@ def read_data(command_send):
             #return 0
         except Exception as err:
             print("EXCEPTION ERROR: " + str(err))        
+'''
+This function will send the command to the pi via serial
+'''
 
 def send_commands():
     print("=========== DONE WITH LOGIN ===========")
@@ -48,8 +64,7 @@ def send_commands():
         command_send = input("")
         ser.write(bytes(command_send + "\n", encoding='utf8'))
         read_data(command_send)
-
-
+        
 '''
 Connect to Serial Port
 
@@ -94,6 +109,5 @@ try:
             pass
 except:
     print("Error reading from " + serial_port)
-    send_commands()
 
   

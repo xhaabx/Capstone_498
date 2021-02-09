@@ -90,6 +90,7 @@ def send_commands():
         callback('<Return>')
         terminal_window.bind('<Return>', callback)
     except:
+        messagebox.showinfo("ERROR", "Unable to connect via serial")
         close_connection()
             
 def close_connection():
@@ -102,7 +103,7 @@ def close_connection():
         pass
     
     
-def connect_serial():        
+def wait_Login():        
     '''
     Connect to Serial Port
     
@@ -163,7 +164,7 @@ def start_terminal():
     text.pack(fill=tk.BOTH, expand = tk.YES)
     terminal_window.protocol("WM_DELETE_WINDOW", close_connection)
     
-    #connect_serial()
+    #wait_Login()
     send_commands()
 
 def wardriving():
@@ -179,21 +180,21 @@ def wardriving():
     
     wardriving_window.mainloop()
     
-def rougueAP():
-    rougueAP_window = tk.Toplevel()
-    rougueAP_window.title("About") 
-    rougueAP_window.resizable(False, False)    
+def rogueAP():
+    rogueAP_window = tk.Toplevel()
+    rogueAP_window.title("About") 
+    rogueAP_window.resizable(False, False)    
     
-    label1 = tk.Label(rougueAP_window, text="SSID")
-    label_input1 = tk.Entry(rougueAP_window)
-    label2 = tk.Label(rougueAP_window, text="Channel")
-    label_input2 = tk.Entry(rougueAP_window)    
-    label3 = tk.Label(rougueAP_window, text="Webpage:")
-    label_input3 = tk.Entry(rougueAP_window)    
-    label4 = tk.Label(rougueAP_window, text="")
-    label_input4 = tk.Entry(rougueAP_window)    
+    label1 = tk.Label(rogueAP_window, text="SSID")
+    label_input1 = tk.Entry(rogueAP_window)
+    label2 = tk.Label(rogueAP_window, text="Channel")
+    label_input2 = tk.Entry(rogueAP_window)    
+    label3 = tk.Label(rogueAP_window, text="Webpage:")
+    label_input3 = tk.Entry(rogueAP_window)    
+    label4 = tk.Label(rogueAP_window, text="")
+    label_input4 = tk.Entry(rogueAP_window)    
     
-    close_button=tk.Button(rougueAP_window,text='CLOSE',command=rougueAP_window.destroy, font=("Helvetica 16 bold"))
+    close_button=tk.Button(rogueAP_window,text='CLOSE',command=rogueAP_window.destroy, font=("Helvetica 16 bold"))
     
     label1.grid(row=1,column=0)
     label_input1.grid(row=1,column=1)
@@ -205,8 +206,21 @@ def rougueAP():
     label_input4.grid(row=4,column=1)
     close_button.grid(row=5,columnspan=2)  
     
-    rougueAP_window.mainloop()
+    rogueAP_window.mainloop()
+
+def wifi_Assessment():
+    Assessment_window = tk.Toplevel()
+    Assessment_window.title("About") 
+    Assessment_window.resizable(False, False)      
+    label1 = tk.Label(Assessment_window, text="This is the window for the Wireless Assessment.")
     
+    close_button=tk.Button(Assessment_window,text='CLOSE',command=Assessment_window.destroy, font=("Helvetica 16 bold"))
+    
+    label1.grid(row=0,column=0)
+    close_button.grid(row=1,column=0) 
+    
+    Assessment_window.mainloop()    
+
 def menuAbout():
     about_window = tk.Toplevel()
     about_window.title("About") 
@@ -231,7 +245,8 @@ if __name__ == '__main__':
     root.title("CYBV 498 - Wireless Security Assessment Tool")
     root.resizable(False, False)
 
-    rougueAP_button = tk.Button(text='Rougue AP',command=rougueAP, font=("Helvetica 12 bold"))
+    start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
+    rogueAP_button = tk.Button(text='Rogue AP',command=rogueAP, font=("Helvetica 12 bold"))
     wardriving_button = tk.Button(text='WarDriving',command=wardriving, font=("Helvetica 12 bold"))
     terminal_button=tk.Button(text='Serial Terminal',command=start_terminal, font=("Helvetica 12 bold"))
 
@@ -240,10 +255,11 @@ if __name__ == '__main__':
     test2 = ImageTk.PhotoImage(image2)
     label2 = tk.Label(image=test2)
 
-    label2.grid(row=0,column=0,padx=5, pady=10, ipadx=15, ipady=10)
-    rougueAP_button.grid(row=1,column=0,padx=5, pady=5, ipadx=5, ipady=5)
-    wardriving_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)
-    terminal_button.grid(row=3,column=0,padx=5, pady=5, ipadx=5, ipady=5)
+    label2.grid(row=0,columnspan=2,padx=5, pady=10, ipadx=15, ipady=10)
+    start_Assessment_button.grid(row=1,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+    rogueAP_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)
+    wardriving_button.grid(row=2,column=1,padx=5, pady=5, ipadx=5, ipady=5)
+    terminal_button.grid(row=3,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
     
     menuBar = tk.Menu(root)
     toolsMenu = tk.Menu(menuBar, tearoff=0)

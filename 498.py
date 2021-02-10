@@ -14,8 +14,10 @@ Version 1.2 February 2021, - Tkinter Images + about menu + some structures
 import serial # pip3 install serial
 import time
 import tkinter as tk
+from tkinter.ttk import Progressbar
 from PIL import ImageTk, Image  
 from   tkinter import messagebox
+import threading
 import re
 
 serial_port = "COM4"
@@ -80,10 +82,15 @@ def callback(event):
     ser.write(bytes(command_send + "\n", encoding='utf8'))
     read_data(command_send)    
 
+
+def send_command(command):
+    ser = serial.Serial(serial_port, baud_rate)
+    ser.write(bytes(command + "\n", encoding='utf8'))
+
 '''
 This function will send the command to the pi via serial
 '''
-def send_commands():
+def terminal_commands():
     global ser
     try:
         ser = serial.Serial(serial_port, baud_rate)
@@ -144,7 +151,7 @@ def wait_Login():
    
                 if "raspberrypi login:" in rcvd:
                     startup = True
-                    send_commands()      
+                    terminal_commands()      
                     
             except Exception as err:
                 print("******************")
@@ -165,7 +172,7 @@ def start_terminal():
     terminal_window.protocol("WM_DELETE_WINDOW", close_connection)
     
     #wait_Login()
-    send_commands()
+    terminal_commands()
 
 def wardriving():
     wardriving_window = tk.Toplevel()
@@ -179,7 +186,39 @@ def wardriving():
     close_button.grid(row=1,column=0) 
     
     wardriving_window.mainloop()
+
+def loading_bar(time_to_load, message):
+    x = threading.Thread(target=loading_bar_1, args=(time_to_load, message,))
+    x.start()
+
     
+def loading_bar_1(time_to_load, message): 
+    try:
+        load_window = tk.Toplevel(root)
+        load_window.resizable(False, False)
+        load_window.title('Results')
+            
+        # Progress bar widget 
+        label = tk.Label(load_window,text=message,font=("Helvetica 16 bold"))
+        
+        progress = Progressbar(load_window, orient = tk.HORIZONTAL, length = 100, mode = 'determinate') 
+        label.pack(pady = 20, padx = 20,)
+        progress.pack(pady = 20, padx = 20,ipady = 15, ipadx = 50) 
+        load_window.update()
+        
+        temp = time_to_load/10
+        
+        for i in range(1,11):
+            if i != 10:
+                progress['value'] = i * 10
+            load_window.update_idletasks() 
+            time.sleep(temp) 
+            
+        progress['value'] = 100 
+        load_window.destroy()
+    except:
+        messagebox.showinfo("ERROR", message + " Cancelled")  
+        
 def rogueAP():
     rogueAP_window = tk.Toplevel()
     rogueAP_window.title("About") 
@@ -210,17 +249,64 @@ def rogueAP():
 
 def wifi_Assessment():
     Assessment_window = tk.Toplevel()
-    Assessment_window.title("About") 
+    Assessment_window.title("Assessment") 
     Assessment_window.resizable(False, False)      
     label1 = tk.Label(Assessment_window, text="This is the window for the Wireless Assessment.")
     
-    close_button=tk.Button(Assessment_window,text='CLOSE',command=Assessment_window.destroy, font=("Helvetica 16 bold"))
+    scan_button=tk.Button(Assessment_window,text='Scan for Networks',command=scanNetwork, font=("Helvetica 16 bold"))
+    select_button=tk.Button(Assessment_window,text='Select Network',command=assessment_manager, font=("Helvetica 16 bold"))
     
     label1.grid(row=0,column=0)
-    close_button.grid(row=1,column=0) 
-    
+    scan_button.grid(row=1,column=0) 
+    select_button.grid(row=5,column=0) 
     Assessment_window.mainloop()    
 
+def assessment_manager():
+    Authentication = 0
+    if Authentication:
+        print("Authenticate Scanning")
+        connect_to_wireless() 
+        analyze_traffic()
+    else:
+        print("Non-Authenticate Scanning") 
+        encryption_Manager()
+        
+def connect_to_wireless():
+    # This function will connect to the wireless via WPAClient():
+    print("Function to connect to the wireless network") 
+    
+def analyze_traffic():
+    # This fucntion will make a dump of the network likely through tshark. and perform many different analysis.
+    # This function will perform a passive or active scan. (Choose one)
+    print("Function to analyze the network")
+    
+def encryption_Manager():
+    encryption = open("search.cap")
+    
+    if encryption == "WEP":
+        print ("The Encryption is WEP") 
+        
+    if encryption == ("WPA" or "WPA2"):
+        print ("The Encryption is WEP") 
+        capture_Handshake()
+        
+    if encryption == "WPA3":
+        print ("The Encryption is WPA3")
+        capture_Handshake()
+    
+def capture_handshake():
+    print("capture_handshake")
+    
+def capture_handshake():
+    print("capture_handshake")
+    
+def scanNetwork():
+    # send_command("timeout 30s airodump-ng mon0 -w search.cap") 
+    loading_bar(35,'Scanning Networks')
+    
+def generate_report():
+    print("This is the function to generate a report")
+    
 def menuAbout():
     about_window = tk.Toplevel()
     about_window.title("About") 

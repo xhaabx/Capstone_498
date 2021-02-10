@@ -1,13 +1,14 @@
 about = \
 '''
 Script Purpose: Capstone Project (CYBV498)
-Script Version: 1.2 February 2021
+Script Version: 1.3 February 2021
 Script Author:  Gabriel Haab, University of Arizona
 
 Script Revision History (Python 3.8.2):
 Version 1.0 February 2021, - Added serial communication
 Version 1.1 February 2021, - Tkinter + Serial Connection
 Version 1.2 February 2021, - Tkinter Images + about menu + some structures
+Version 1.3 February 2021, - Loading window + some structures
 '''
 
 # Imports

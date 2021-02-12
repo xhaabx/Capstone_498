@@ -20,7 +20,8 @@ from PIL import ImageTk, Image
 from   tkinter import messagebox
 import threading
 import re
-
+import base64
+    
 serial_port = "COM4"
 baud_rate = 115200
 
@@ -85,8 +86,44 @@ def callback(event):
 
 
 def send_command(command):
-    ser = serial.Serial(serial_port, baud_rate)
+    global ser
+    
+    try:
+        ser = serial.Serial(serial_port, baud_rate)
+    except:
+        pass
+    print("sending command: " + command) 
     ser.write(bytes(command + "\n", encoding='utf8'))
+    
+    
+    received_data = ser.read()              #read serial port
+    time.sleep(1)
+    data_left = ser.inWaiting()             #check for remaining byte
+    received_data += ser.read(data_left)
+    rcvd = received_data.decode('ascii')
+    
+    rcvd = rcvd.strip()        
+    rcvd_list = rcvd.split('\r\n')
+    print("Received:")
+    print(rcvd_list)
+    '''
+    for i in rcvd_list: 
+        if i.strip() == '':
+            pass    
+        elif "Under-voltage detected!" in i:
+            pass       
+        elif i.strip() == command:
+            pass                 
+        else:
+            print(i)
+            return i    
+    '''
+    if 'raspberry' in rcvd_list[-1]:
+        print(rcvd_list[-2])
+        return rcvd_list[-2]         
+    else:
+        print(rcvd_list[-1])
+        return rcvd_list[-1]     
 
 '''
 This function will send the command to the pi via serial
@@ -192,7 +229,38 @@ def loading_bar(time_to_load, message):
     x = threading.Thread(target=loading_bar_1, args=(time_to_load, message,))
     x.start()
 
+
+
+def transfer_over_serial(file_name):
+    #send_command("base64 "+ file_name  +" -w 0")
+
+    b64data = ""
+
+    print("Attempting to transfer file")
+    total_char = int(send_command("base64 " + file_name + " -w 0  | wc -c"))
+    #total_char = 9253
+    number_slices = round(total_char/3000) # 3000 is the max buffer for each request
+    data_size = round(total_char/number_slices)
     
+    start_byte = 1
+
+    for i in range(0,number_slices):
+        if i == (number_slices - 1):
+            end_byte = 123456789
+        else:
+            end_byte = data_size
+        returned = send_command("base64 " + file_name + " -w 0 | awk '{print substr($1," + str(start_byte) + "," + str(end_byte) + ");exit}'")
+        b64data += returned
+        
+        # base64 search.cap-01.csv -w 0 | awk '{print substr($0,1,3000);exit}'
+        
+        start_byte = start_byte + data_size
+        end_byte = end_byte + data_size                
+    
+    b64data = b64data.encode()
+    with open(file_name, "wb") as fh:
+        fh.write(base64.decodebytes(b64data))    
+
 def loading_bar_1(time_to_load, message): 
     try:
         load_window = tk.Toplevel(root)
@@ -282,7 +350,7 @@ def analyze_traffic():
     print("Function to analyze the network")
     
 def encryption_Manager():
-    encryption = open("search.cap")
+    #encryption = open("search.cap")
     
     if encryption == "WEP":
         print ("The Encryption is WEP") 
@@ -295,14 +363,24 @@ def encryption_Manager():
         print ("The Encryption is WPA3")
         capture_Handshake()
     
-def capture_handshake():
-    print("capture_handshake")
+def monitor_mode(mode,card):
+    if mode == "enable":
+        print("enabling the monitor mode on " + card)
+        send_command("sudo iw dev " + card + " interface add mon0 type monitor")
+    if mode == "disable": 
+        print("disabling the monitor mode on " + card)
+        send_command("iw dev mon0 interface del")
     
 def capture_handshake():
     print("capture_handshake")
+
+def remove_temp():
+    send_command("rm temp/*") 
     
 def scanNetwork():
-    # send_command("timeout 30s airodump-ng mon0 -w search.cap") 
+    remove_temp()
+    monitor_mode("enable", "wlan1")
+    send_command("timeout 15s airodump-ng mon0 -w temp/search.cap") 
     loading_bar(35,'Scanning Networks')
     
 def generate_report():
@@ -328,11 +406,13 @@ def menuAbout():
     
 if __name__ == '__main__':
     root= tk.Tk()
-    #root.geometry("400x268")
     root.title("CYBV 498 - Wireless Security Assessment Tool")
     root.resizable(False, False)
 
-    start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
+    #start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
+    start_Assessment_button = tk.Button(text='Start Assessment',command=lambda: transfer_over_serial('search.cap-01.csv'), font=("Helvetica 12 bold"))
+    
+    
     rogueAP_button = tk.Button(text='Rogue AP',command=rogueAP, font=("Helvetica 12 bold"))
     wardriving_button = tk.Button(text='WarDriving',command=wardriving, font=("Helvetica 12 bold"))
     terminal_button=tk.Button(text='Serial Terminal',command=start_terminal, font=("Helvetica 12 bold"))
@@ -356,6 +436,5 @@ if __name__ == '__main__':
     toolsMenu.add_command(label='Exit', command=root.destroy)
     menuBar.add_cascade(label='Help', menu=toolsMenu, underline=0)  
     root.config(menu=menuBar)  # menu ends    
-    
     
     root.mainloop()

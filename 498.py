@@ -87,44 +87,24 @@ def callback(event):
 
 def send_command(command):
     global ser
-    
     try:
         ser = serial.Serial(serial_port, baud_rate)
     except:
         pass
-    print("sending command: " + command) 
+   # print("sending command: " + command) 
     ser.write(bytes(command + "\n", encoding='utf8'))
     
-    
-    received_data = ser.read()              #read serial port
-    time.sleep(1)
-    data_left = ser.inWaiting()             #check for remaining byte
-    received_data += ser.read(data_left)
-    rcvd = received_data.decode('ascii')
-    
-    rcvd = rcvd.strip()        
-    rcvd_list = rcvd.split('\r\n')
-    print("Received:")
-    print(rcvd_list)
-    '''
-    for i in rcvd_list: 
-        if i.strip() == '':
-            pass    
-        elif "Under-voltage detected!" in i:
-            pass       
-        elif i.strip() == command:
-            pass                 
-        else:
-            print(i)
-            return i    
-    '''
-    if 'raspberry' in rcvd_list[-1]:
-        print(rcvd_list[-2])
-        return rcvd_list[-2]         
-    else:
-        print(rcvd_list[-1])
-        return rcvd_list[-1]     
+    rcvd_list = []
+    return_string = ''
+    rcvd = command
 
+    while (rcvd.strip() == command.strip()):
+        received_data = ser.readline()  
+        rcvd = str(received_data.decode('ascii'))
+        
+    #print("Received: " + rcvd)
+    return rcvd
+    
 '''
 This function will send the command to the pi via serial
 '''
@@ -229,38 +209,16 @@ def loading_bar(time_to_load, message):
     x = threading.Thread(target=loading_bar_1, args=(time_to_load, message,))
     x.start()
 
-
-
 def transfer_over_serial(file_name):
-    #send_command("base64 "+ file_name  +" -w 0")
-
-    b64data = ""
-
-    print("Attempting to transfer file")
-    total_char = int(send_command("base64 " + file_name + " -w 0  | wc -c"))
-    #total_char = 9253
-    number_slices = round(total_char/3000) # 3000 is the max buffer for each request
-    data_size = round(total_char/number_slices)
-    
-    start_byte = 1
-
-    for i in range(0,number_slices):
-        if i == (number_slices - 1):
-            end_byte = 123456789
-        else:
-            end_byte = data_size
-        returned = send_command("base64 " + file_name + " -w 0 | awk '{print substr($1," + str(start_byte) + "," + str(end_byte) + ");exit}'")
-        b64data += returned
-        
-        # base64 search.cap-01.csv -w 0 | awk '{print substr($0,1,3000);exit}'
-        
-        start_byte = start_byte + data_size
-        end_byte = end_byte + data_size                
+    b64data = send_command("base64 " + file_name + " -w 0 && echo")
+    print(len(b64data))
     
     b64data = b64data.encode()
     with open(file_name, "wb") as fh:
+        #fh.write(b64data)
         fh.write(base64.decodebytes(b64data))    
-
+    print("done")    
+    
 def loading_bar_1(time_to_load, message): 
     try:
         load_window = tk.Toplevel(root)
@@ -410,7 +368,7 @@ if __name__ == '__main__':
     root.resizable(False, False)
 
     #start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
-    start_Assessment_button = tk.Button(text='Start Assessment',command=lambda: transfer_over_serial('search.cap-01.csv'), font=("Helvetica 12 bold"))
+    start_Assessment_button = tk.Button(text='Test TransferFile',command=lambda: transfer_over_serial('search.cap-01.cap'), font=("Helvetica 12 bold"))
     
     
     rogueAP_button = tk.Button(text='Rogue AP',command=rogueAP, font=("Helvetica 12 bold"))

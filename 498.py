@@ -21,7 +21,8 @@ from   tkinter import messagebox
 import threading
 import re
 import base64
-    
+import multiprocessing
+
 serial_port = "COM4"
 baud_rate = 115200
 
@@ -84,24 +85,54 @@ def callback(event):
     ser.write(bytes(command_send + "\n", encoding='utf8'))
     read_data(command_send)    
 
+def send_command1(command):
+    ser.write(bytes(command + "\n", encoding='utf8'))  
+    count = False
+    
+    while count == False:
+        received_data = ser.read()              #read serial port
+        time.sleep(1)
+        data_left = ser.inWaiting()             #check for remaining byte
+        received_data += ser.read(data_left)
+        rcvd = received_data.decode('ascii')
+        
+        rcvd = rcvd.strip()        
+        rcvd_list = rcvd.split('\r\n')
+        
+        if "Under-voltage detected!" in rcvd:
+            pass  
+        
+        try:
+            #print(rcvd_list)
+            for i in rcvd_list: 
+                if i.strip() == '':
+                    pass    
+                elif "Under-voltage detected!" in i:
+                    pass       
+                elif i.strip() == command:
+                    pass            
+                elif i == rcvd_list[-1]:
+                    print(rcvd_list[-1] + " ", end = "")       
+                else:
+                    count = True
+                    print(i)
+            return 1
+            #return 0
+        except Exception as err:
+            print("EXCEPTION ERROR: " + str(err))            
 
 def send_command(command):
-    global ser
-    try:
-        ser = serial.Serial(serial_port, baud_rate)
-    except:
-        pass
-   # print("sending command: " + command) 
+    
+    # print("sending command: " + command) 
     ser.write(bytes(command + "\n", encoding='utf8'))
     
-    rcvd_list = []
-    return_string = ''
     rcvd = command
-
-    while (rcvd.strip() == command.strip()):
+    
+    while (command.split()[0] in rcvd.strip()) or rcvd.strip() == '':
         received_data = ser.readline()  
         rcvd = str(received_data.decode('ascii'))
-        
+        #print("test" + str(rcvd))
+
     #print("Received: " + rcvd)
     return rcvd
     
@@ -109,13 +140,10 @@ def send_command(command):
 This function will send the command to the pi via serial
 '''
 def terminal_commands():
-    global ser
     try:
-        ser = serial.Serial(serial_port, baud_rate)
         callback('<Return>')
         terminal_window.bind('<Return>', callback)
     except:
-        messagebox.showinfo("ERROR", "Unable to connect via serial")
         close_connection()
             
 def close_connection():
@@ -126,8 +154,6 @@ def close_connection():
     except:
         terminal_window.destroy()
         pass
-    
-    
 def wait_Login():        
     '''
     Connect to Serial Port
@@ -205,23 +231,44 @@ def wardriving():
     
     wardriving_window.mainloop()
 
+
+def transfer_over_serial_thread(file_name):
+    '''
+    p2 = multiprocessing.Process(target=transfer_over_serial, args=(ser,file_name, ))
+    p2.start()     
+    
+    '''
+    print("thread transfer")
+    y = threading.Thread(target=transfer_over_serial, args=(file_name,))
+    y.start()
+    y.join()
+    
+def transfer_over_serial(file_name):
+    b64data = send_command("base64 " + file_name + " -w 0 | wc -c && echo") 
+    print("Lenght to be transferred: " + str(b64data), flush=True)
+    #loading_bar(int(int(b64data)/12000),"Transferring file\n" + file_name)
+    b64data = send_command("base64 " + file_name + " -w 0 && echo") 
+    print("Received: " + str(len(b64data)))
+    
+    print("Creating the file...")
+    b64data = b64data.encode()
+    if '/' in file_name:
+        file_name = file_name.split('/')[-1]
+    with open(file_name, "wb") as fh:
+        fh.write(base64.decodebytes(b64data))    
+    print("Done transferring the file: " + file_name)    
+    
 def loading_bar(time_to_load, message):
+    print("process loading bar")
+    #p1 = multiprocessing.Process(target=loading_bar_1, args=(time_to_load, message, ))
+    #p1.start() 
     x = threading.Thread(target=loading_bar_1, args=(time_to_load, message,))
     x.start()
-
-def transfer_over_serial(file_name):
-    b64data = send_command("base64 " + file_name + " -w 0 && echo")
-    print(len(b64data))
-    
-    b64data = b64data.encode()
-    with open(file_name, "wb") as fh:
-        #fh.write(b64data)
-        fh.write(base64.decodebytes(b64data))    
-    print("done")    
+    x.join()
     
 def loading_bar_1(time_to_load, message): 
     try:
-        load_window = tk.Toplevel(root)
+        load_window = tk.Tk()
         load_window.resizable(False, False)
         load_window.title('Results')
             
@@ -239,11 +286,12 @@ def loading_bar_1(time_to_load, message):
             if i != 10:
                 progress['value'] = i * 10
             load_window.update_idletasks() 
-            time.sleep(temp) 
+            load_window.after(int(temp * 1000))
             
         progress['value'] = 100 
         load_window.destroy()
-    except:
+    except Exception as err:
+        print("error: " + str(err))
         messagebox.showinfo("ERROR", message + " Cancelled")  
         
 def rogueAP():
@@ -280,7 +328,7 @@ def wifi_Assessment():
     Assessment_window.resizable(False, False)      
     label1 = tk.Label(Assessment_window, text="This is the window for the Wireless Assessment.")
     
-    scan_button=tk.Button(Assessment_window,text='Scan for Networks',command=scanNetwork, font=("Helvetica 16 bold"))
+    scan_button=tk.Button(Assessment_window,text='Scan for Networks',command=lambda: scanNetwork(Assessment_window), font=("Helvetica 16 bold"))
     select_button=tk.Button(Assessment_window,text='Select Network',command=assessment_manager, font=("Helvetica 16 bold"))
     
     label1.grid(row=0,column=0)
@@ -335,11 +383,16 @@ def capture_handshake():
 def remove_temp():
     send_command("rm temp/*") 
     
-def scanNetwork():
+def scanNetwork(Assessment_window):
     remove_temp()
     monitor_mode("enable", "wlan1")
-    send_command("timeout 15s airodump-ng mon0 -w temp/search.cap") 
-    loading_bar(35,'Scanning Networks')
+    send_command1("timeout 15s airodump-ng mon0 -w /root/temp/search.cap &> file") 
+    done = loading_bar(35,'Scanning Networks')
+    #transfer over the .csv file
+    transfer_over_serial_thread('/root/temp/searc-01.kismet.csv')
+    
+    w = OptionMenu(master, variable, *data.keys())
+    w.pack()
     
 def generate_report():
     print("This is the function to generate a report")
@@ -362,24 +415,27 @@ def menuAbout():
     close_button.grid(row=2,column=0,padx=5, pady=10, ipadx=15, ipady=10)
     about_window.mainloop()
     
+
+
+
 if __name__ == '__main__':
+
     root= tk.Tk()
     root.title("CYBV 498 - Wireless Security Assessment Tool")
     root.resizable(False, False)
-
-    #start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
-    start_Assessment_button = tk.Button(text='Test TransferFile',command=lambda: transfer_over_serial('search.cap-01.cap'), font=("Helvetica 12 bold"))
     
+    #start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
+    start_Assessment_button = tk.Button(text='Test TransferFile',command=lambda: transfer_over_serial_thread('/root/temp/search.cap-01.csv'), font=("Helvetica 12 bold"))
     
     rogueAP_button = tk.Button(text='Rogue AP',command=rogueAP, font=("Helvetica 12 bold"))
     wardriving_button = tk.Button(text='WarDriving',command=wardriving, font=("Helvetica 12 bold"))
     terminal_button=tk.Button(text='Serial Terminal',command=start_terminal, font=("Helvetica 12 bold"))
-
+    
     image2 = Image.open("img/CYBV498.png")
     image2 = image2.resize((150, 130), Image.ANTIALIAS)    
     test2 = ImageTk.PhotoImage(image2)
     label2 = tk.Label(image=test2)
-
+    
     label2.grid(row=0,columnspan=2,padx=5, pady=10, ipadx=15, ipady=10)
     start_Assessment_button.grid(row=1,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
     rogueAP_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)
@@ -395,4 +451,10 @@ if __name__ == '__main__':
     menuBar.add_cascade(label='Help', menu=toolsMenu, underline=0)  
     root.config(menu=menuBar)  # menu ends    
     
-    root.mainloop()
+    try:
+        ser = serial.Serial(serial_port, baud_rate)
+    except:
+        messagebox.showinfo("ERROR", "Unable to connect via serial")
+        root.destroy()
+        
+    root.mainloop()    

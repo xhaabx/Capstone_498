@@ -10,20 +10,29 @@ Version 1.1 February 2021, - Tkinter + Serial Connection
 Version 1.2 February 2021, - Tkinter Images + about menu + some structures
 Version 1.3 February 2021, - Loading window + some structures
 Version 1.4 March 2021, - Fixes on previous functions + network selection
+Version 1.5 March 2021 - Adjusted Assessment TKinter windows
 '''
 
+#Third party imports
+import serial 
+from xhtml2pdf import pisa
+import pandas as pd
+from PIL import ImageTk, Image  
+from mac_vendor_lookup import MacLookup
+
 # Imports
-import serial # pip3 install serial
 import time
 import tkinter as tk
 from tkinter.ttk import Progressbar
-from PIL import ImageTk, Image  
+
 from   tkinter import messagebox
 import threading
 import re
 import base64
 import multiprocessing
 import csv
+from datetime import datetime
+import os 
 
 serial_port = "COM4"
 baud_rate = 115200
@@ -138,13 +147,7 @@ def send_command(command):
     #print("Received: " + rcvd)
     return rcvd
     
-def select_network(network_name): 
-    ESSID = network_name.get()
-    Privacy = data[ESSID][0]
-    BSSID = data[ESSID][1]
-    Channel = data[ESSID][2]
-    
-    print("You Selected: " + ESSID + " | " + Privacy + " | " + BSSID + " | " + Channel)
+
     
 def read_csv():
     try:
@@ -342,15 +345,17 @@ def rogueAP():
 def wifi_Assessment():
     
     Assessment_window = tk.Toplevel()
-    Assessment_window.title("Assessment") 
-    Assessment_window.resizable(False, False)      
-    label1 = tk.Label(Assessment_window, text="This is the window for the Wireless Assessment.")
+    Assessment_window.title("Wireless Assessment")
+    Assessment_window.resizable(False, False)     
     
-    scan_button=tk.Button(Assessment_window,text='Scan for Networks',command=lambda: scanNetwork(Assessment_window, scan_button), font=("Helvetica 16 bold"))
+    message = tk.Label(Assessment_window, text="Automated Wireless Security Assessment Tool.\n\nThis tool is intended to be used for legal security purposes only, \nYou should only use it to protect devices you own or have permission to test.\nAny other use is not the responsibility of the developer(s).\n\n", font=("Helvetica 12 bold"))
+    
+    back_button=tk.Button(Assessment_window,text='Back',command=Assessment_window.destroy, font=("Helvetica 16 bold")) 
+    next_button=tk.Button(Assessment_window,text='Next',command=lambda: scanNetwork(Assessment_window, message, next_button,back_button), font=("Helvetica 16 bold"))
 
-    label1.grid(row=0,column=0)
-    scan_button.grid(row=1,column=0) 
-
+    message.grid(row=0,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+    next_button.grid(row=2,column=1,padx=5, pady=5, ipadx=5, ipady=5)
+    back_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)
     Assessment_window.mainloop()    
 
 def assessment_manager():
@@ -400,17 +405,16 @@ def remove_temp():
     send_command1("rm /root/temp/*") 
     time.sleep(2)
     
-def scanNetwork(Assessment_window,scan_button):
+def scanNetwork(Assessment_window, message, next_button, back_button):
     global data
-    
-    remove_temp()
-    
+
+    # ==================================================
+    # Performing the activities
+    # ==================================================
+    remove_temp() 
     monitor_mode("enable", "wlan1")
-    
     print("sending scanning command")
-    
     send_command1("timeout 15s airodump-ng mon0 -w /root/temp/search.cap &> file") 
-    
     loading_bar(20,'Scanning for Networks')
     
     #transfer over the .csv file
@@ -420,30 +424,54 @@ def scanNetwork(Assessment_window,scan_button):
         x = transfer_over_serial('/root/temp/search.cap-01.csv')
     
     data = read_csv()
+    # ==================================================
+    # ==================================================    
     
-    variable = tk.StringVar()
-    variable.set("Please Select a Network") # default value
+    list_grid = Assessment_window.grid_slaves()
+    for l in list_grid:
+        l.destroy() 
+        
+        
+    message = tk.Label(Assessment_window,text="Please select the network to perform the assessment", font=("Helvetica 12 bold"))
+    OptionMenu_button = tk.OptionMenu(Assessment_window, network_name, *data.keys())
+    next_button=tk.Button(Assessment_window,text='Next',command= lambda: select_network(Assessment_window, message, next_button,back_button,OptionMenu_button,network_name), font=("Helvetica 16 bold"))
     
-    scan_button.destroy()    
-    OptionMenu_button = tk.OptionMenu(Assessment_window, variable, *data.keys())
-    select_button = tk.Button(Assessment_window, text='GO!',command= lambda: select_network(variable), font=("Helvetica 12 bold"))
-    OptionMenu_button.grid(row=3,column=0) 
-    select_button.grid(row=4,column=0) 
+    back_button=tk.Button(Assessment_window,text="Scan again", command= lambda: scanNetwork(Assessment_window, message, next_button,back_button),font=("Helvetica 16 bold"))
+    
+    message.grid(row=0,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+    OptionMenu_button.grid(row=1,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+    next_button.grid(row=2,column=1,padx=5, pady=5, ipadx=5, ipady=5)
+    back_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)    
+    
     Assessment_window.update()
+
+def select_network(Assessment_window, message, next_button,back_button,OptionMenu_button,network_name): 
+    Assessment_window.update()
+    if network_name.get() != "Please Select a Network":
+        ESSID = network_name.get()
+        Privacy = data[ESSID][0]
+        BSSID = data[ESSID][1]
+        Channel = data[ESSID][2]
+        
+        OptionMenu_button.destroy()
+        
+        message.config(text="You Selected:\n\n ESSID: " + ESSID + " \nEncryption: " + Privacy + " \nBSSID: " + BSSID + " \nChannel: " + Channel)
+        next_button.config(text="Generate Report",command= lambda: generate_report(Assessment_window, message, next_button,back_button,network_name))
+        back_button.config(text="Back",command= lambda: scanNetwork(Assessment_window, message, next_button,back_button))                   
+    else:
+        messagebox.showinfo("ERROR", "PLEASE SELECT A NETWORK\nFROM THE DROPDOWN MENU")
+        scanNetwork(Assessment_window, message, next_button,back_button)
     
-def generate_report():
+def generate_report(Assessment_window, message, next_button,back_button,network_name):
     print("This is the function to generate a report")
-    #writing HTML Content
-    heading = '<h1> Automated Report Tutorial by Abhinav Sharma</h1>'
-    subheading = '<h3> Sample Report for Placement </h3>'
-    # Using .now() from datetime library to add Time stamp
-    now = datetime.now()
-    current_time = now.strftime("%m/%d/%Y %H:%M:%S")
-    header = '<div class="top">' + heading + subheading +'</div>'
-    footer = '<div class="bottom"> <h3> This Report has been Generated on '+ current_time +'</h3> </div>'
-    content = '<div class="table"> ' + pivot.to_html() + ' </div> \n <div class="chart"> '+ image_tag +'</div>'
-    # Concating everything to a single string
-    html = header + content + footer    
+    
+    Assessment_window.update()
+    message.config(text="The report has been generated.")
+    
+    next_button.config(text="Exit", command= Assessment_window.destroy)
+    back_button.config(text="Open Report", command= lambda: os.startfile("Report.pdf"))
+    next_button.grid(row=2,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+    Assessment_window.update()
     
 def menuAbout():
     about_window = tk.Toplevel()
@@ -463,9 +491,6 @@ def menuAbout():
     close_button.grid(row=2,column=0,padx=5, pady=10, ipadx=15, ipady=10)
     about_window.mainloop()
     
-
-
-
 if __name__ == '__main__':
 
     root= tk.Tk()
@@ -498,7 +523,8 @@ if __name__ == '__main__':
     root.config(menu=menuBar)  # menu ends    
     
     try:
-        ser = serial.Serial(serial_port, baud_rate)
+        pass
+        #ser = serial.Serial(serial_port, baud_rate)
     except:
         messagebox.showinfo("ERROR", "Unable to connect via serial")
         root.destroy()

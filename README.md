@@ -1,3 +1,3 @@
-# Capstone_498
-This is the repository for my capstone project.
+# Pi Pineapple
 
+Wifi pentesting script to automatically test the security of wireless environemnts using a raspberry pi.
